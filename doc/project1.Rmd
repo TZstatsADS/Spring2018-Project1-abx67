@@ -11,28 +11,24 @@ output:
 # Step 0: check and install needed packages. Load the libraries and functions. 
 
 ```{r, message=FALSE, warning=FALSE}
-# packages.used=c("rvest", "tibble", "qdap", 
-#                 "sentimentr", "gplots", "dplyr",
-#                 "tm", "syuzhet", "factoextra", 
-#                 "beeswarm", "scales", "RColorBrewer",
-#                 "RANN", "tm", "topicmodels")
-# 
-# # check packages that need to be installed.
-# packages.needed=setdiff(packages.used, 
-#                         intersect(installed.packages()[,1], 
-#                                   packages.used))
-# # install additional packages
-# if(length(packages.needed)>0){
-#   install.packages(packages.needed, dependencies = TRUE)
-# }
+packages.used=c("rvest", "tibble", "qdap",
+                "sentimentr", "gplots", "dplyr",
+                "tm", "syuzhet", "factoextra",
+                "beeswarm", "scales", "RColorBrewer",
+                "RANN", "tm", "topicmodels")
+
+# check packages that need to be installed.
+packages.needed=setdiff(packages.used,
+                        intersect(installed.packages()[,1],
+                                  packages.used))
+# install additional packages
+if(length(packages.needed)>0){
+  install.packages(packages.needed, dependencies = TRUE)
+}
 
 # load packages
 library("rvest")
 library("tibble")
-# You may need to run
-#system("ln -f -s $(/usr/libexec/java_home)/jre/lib/server/libjvm.dylib /usr/local/lib")
-# sudo ln -f -s $(/usr/libexec/java_home)/jre/lib/server/libjvm.dylib /usr/local/lib
-# in order to load qdap
 library("qdap")
 library("sentimentr")
 library("gplots")
@@ -54,8 +50,8 @@ library(tidytext)
 library("xlsx")
 library("ggplot2")
 
-source("./lib/plotstacked.R")
-source("./lib/speechFuncs.R")
+source("../lib/plotstacked.R")
+source("../lib/speechFuncs.R")
 ```
 This notebook was prepared with the following environmental settings.
 
@@ -67,16 +63,16 @@ print(R.version)
 
 First import all data needed: InauguationDates.txt, InaugurationInfo.xlsx and all speeches text.
 ```{r,warning=FALSE}
-inaug.dates <- read.table("./data/InauguationDates.txt",header=TRUE,sep="\t")
-inaug.info <- read.xlsx("./data/InaugurationInfo.xlsx",sheetName="Sheet1",header=T,stringsAsFactors = FALSE)
+inaug.dates <- read.table("../data/InauguationDates.txt",header=TRUE,sep="\t")
+inaug.info <- read.xlsx("../data/InaugurationInfo.xlsx",sheetName="Sheet1",header=T,stringsAsFactors = FALSE)
 inaug.info$Words <- as.numeric(inaug.info$Words)
 
-filenames = list.files("./data/InauguralSpeeches") #get all file name
-dir = paste("./data/InauguralSpeeches/",filenames,sep="")
+filenames = list.files("../data/InauguralSpeeches") #get all file name
+dir = paste("../data/InauguralSpeeches/",filenames,sep="")
 n = length(dir)
 speeches = list()
 for (i in 1:n){
-  filename = paste("./data/InauguralSpeeches/inaug",inaug.info$File[i],"-",inaug.info$Term[i],".txt",sep="")
+  filename = paste("../data/InauguralSpeeches/inaug",inaug.info$File[i],"-",inaug.info$Term[i],".txt",sep="")
   new.data = paste(readLines(filename, n=-1, skipNul=TRUE),collapse=" ")
   speeches = c(speeches,new.data)
 }
@@ -85,7 +81,7 @@ names(speeches) <- paste(inaug.info$File, inaug.info$Term,sep="-")
 
 # Step 2: data Processing --- generate list of sentences
 
-Use "?", ".", "!", "|",";" as stop point of one sentence and extract all sentences from speeches.
+Let's use "?", ".", "!", "|",";" as stop point of one sentence and extract all sentences from speeches.
 ```{r, message=FALSE, warning=FALSE}
 sentence.list=NULL
 for(i in 1:58){
@@ -130,7 +126,10 @@ Now we want to find something about the length of sentences.
 sentence.list$TimeOrdered=reorder(sentence.list$File,
                                   1:nrow(sentence.list),
                                   order=T)
-tail(sentence.list$TimeOrdered,150)
+sentence.list$FileOrdered=reorder(sentence.list$File,
+                                  sentence.list$word.count, 
+                                  mean, 
+                                  order=T)
 beeswarm(word.count~TimeOrdered,
          data=sentence.list,
          horizontal = TRUE, 
@@ -305,7 +304,7 @@ presid.tmp=tbl_df(sentence.list[inaug.info$Party=="Democratic",])%>%
     surprise=mean(surprise),
     trust=mean(trust)
   )
-inaug.info$Party
+
 presid.summary=as.data.frame(presid.summary)
 rownames(presid.summary)=as.character((presid.summary[,1]))
 km.res=kmeans(presid.summary[,-1], iter.max=200,
@@ -328,7 +327,7 @@ presid.tmp=tbl_df(sentence.list[inaug.info$Party=="Republican",])%>%
     surprise=mean(surprise),
     trust=mean(trust)
   )
-inaug.info$Party
+
 presid.summary=as.data.frame(presid.summary)
 rownames(presid.summary)=as.character((presid.summary[,1]))
 km.res=kmeans(presid.summary[,-1], iter.max=200,
@@ -429,15 +428,15 @@ ldaOut <-LDA(dtm, k, method="Gibbs", control=list(nstart=nstart,
 #docs to topics
 ldaOut.topics <- as.matrix(topics(ldaOut))
 table(c(1:k, ldaOut.topics))
-write.csv(ldaOut.topics,file=paste("./output/LDAGibbs",k,"DocsToTopics.csv"))
+write.csv(ldaOut.topics,file=paste("../output/LDAGibbs",k,"DocsToTopics.csv"))
 
 #top 6 terms in each topic
 ldaOut.terms <- as.matrix(terms(ldaOut,20))
-write.csv(ldaOut.terms,file=paste("./output/LDAGibbs",k,"TopicsToTerms.csv"))
+write.csv(ldaOut.terms,file=paste("../output/LDAGibbs",k,"TopicsToTerms.csv"))
 
 #probabilities associated with each topic assignment
 topicProbabilities <- as.data.frame(ldaOut@gamma)
-write.csv(topicProbabilities,file=paste("./output/LDAGibbs",k,"TopicProbabilities.csv"))
+write.csv(topicProbabilities,file=paste("../output/LDAGibbs",k,"TopicProbabilities.csv"))
 ```
 ```{r}
 terms.beta=ldaOut@beta
@@ -447,7 +446,7 @@ for(i in 1:k){
   topics.terms=rbind(topics.terms, ldaOut@terms[order(terms.beta[i,], decreasing = TRUE)[1:7]])
 }
 topics.terms
-ldaOut.terms[1,]
+ldaOut.terms
 ```
 Based on the most popular terms and the most salient terms for each topic, we assign a hashtag to each topic. This part require manual setup as the topics are likely to change. 
 
@@ -574,12 +573,12 @@ wordcloud(dtm.tmp$term, dtm.tmp$`sum(count)`,
 
 We have analyzed the 58 inaugural speeches of presidents. And I have found some interesting things behind their speeches.
 
-To start with, as the father of America, George Washington is a very special president. Not only because his great contribution to America, but also his style of giving speeches. Among all these 40 presidents in our study, George Washington is the most likely to say long sentences. In his inaugural speech, there are only two sentences that have less than 10 words, which are "between duty and advantage" and "From this resolution I have in no instance departed". We could believe that after listen to the record of George Washington's inaugural speech, the latter presidents also found his sentence sounds a bit long so they tend to short their sentences when giving speeches. So it becomes a trend that as time goes by, presidents tend to use shorter sentences and less words in their inaugural speech. As we can see, shorter sentences and less words make a speech more precise and eazy for audiences. And short words and sentences are more likely to cause emotional resonance, which may help them wins the trust of people.
+To start with, as the father of America, George Washington is a very special president. Not only because his great contribution to America, but also his style of giving speeches. Among all these 40 presidents in our study, George Washington is the most likely to say long sentences. In his inaugural speech, there are only two sentences that have less than 10 words, which are "between duty and advantage" and "From this resolution I have in no instance departed". We could believe that after listen to the record of George Washington's inaugural speech, latter presidents also found his sentence sounds a bit long so they tend to short their sentences when giving speeches. So it becomes a trend that as time goes by, presidents tend to use shorter sentences and less words in their inaugural speech. As we can see, shorter sentences and less words make a speech more precise and easy for audiences. And short words and sentences are more likely to cause emotional resonance, which may help them gain the trust of people.
 
-However, George Washington and Thomas Jefferson lived in the same period but they showed quite different ways of giving speech. Unlike George Washington, Thomas Jefferson uses shorter sentences compared to the presidents in his near furture. Let's recall from their teenager environment. George Washington lived in the countryside and had never got education until 15 years old. Then he learned from the local tutor and showed talent in math, geometry and measurement. We may consider this as an explaination of George Washington's inaugural speech that he is good at solving complicated problems and can easily undertand long sentences. As for Thomas Jefferson, he recieved classical education and learned history and politics, which may made him a good speaker at his period. And for now it almost becomes a trend that the inaugural speech uses short sentences. Maybe it is because modern people are too tired to listen to long sentences.
+However, George Washington and Thomas Jefferson lived in the same period but they showed quite different ways of giving speech. Unlike George Washington, Thomas Jefferson uses shorter sentences compared to the presidents in his near furture. Let's recall from their teenager environment. George Washington lived in the countryside and had never got education until 15 years old. Then he learned from the local tutor and showed talent in math, geometry and measurement. Look, his early experience explained everything. George Washington was good at solving complicated problems. Mathematicians never fear to difficult problems and concepts and can easily undertand long sentences. As for Thomas Jefferson, he recieved classical education and learned history and politics in his early period, which may made him a good speaker at his period. He is the author of the Declaration of Independence, which is for every American people. So that long sentences might cause confuse. Thomas Jefferson became aware of it therefore his speeches were more short and pithy. For now it almost becomes a trend that the inaugural speech uses short sentences. Maybe it is because modern people are too tired to listen to long sentences.
  
-Another interesting discover is that presidents' words always reflect their time age and people's hope. For the first two presidents, we can see from the word cloud that they focused more on equality of every people. They lived in a period that America was just founded. It became very important that every individual's right was treated equally. While when it came to the time of Abraham Lincoln who lead the civil war and Franklin D. Roosevelt who joined the second world war. Their speeches were strongly related to the topic of war. We can find words about union or states in Abraham Lincoln's speech while peace in Franklin D. Roosevelt's speeches. Now let's think about Barack Obama and Donald Trump. They both have the willing to recover from 2008 economic crisis, so they talked more about past, together and America, which encouraged people to fight for the hard days together.
+Another interesting discover is that presidents' words always reflect their time age and people's hope. For the first two presidents, we can see from the word cloud that they focused more on equality of every people. They lived in a period that America was just founded. It became very important that every individual's right was treated equally. While when it came to the time of Abraham Lincoln who lead the civil war and Franklin D. Roosevelt who joined the second world war. Their speeches were strongly related to the topic of war and peace. We can find words about union or states in Abraham Lincoln's speech while peace in Franklin D. Roosevelt's speeches. Now let's think about Barack Obama and Donald Trump. They both have the willing to recover from 2008 economic crisis, so they talked more about past, together and America, which encouraged people to fight for the hard days together.
 
-Last but not least, from the clustering of emotions, we also found that the positive emotions is the most used feeling in inaugural speech. It is not hard to explain that only if the speaker showes trustful quality to audiences, the audiences will trust you as a good president. What's more, we also can see some relationship between emotion clustering and party labels. The ones share the same idea will show smilar emotions when giving speeches.
+Last point to mention, from the clustering of emotions, we also found that the positive emotions is the most used feeling in inaugural speech. It is not hard to explain that only if the speaker showes trustful quality to audiences, the audiences will trust you as a good president. What's more, we also can see some relationship between emotion clustering and party labels. The ones share the same idea will show smilar emotions when giving speeches.
 
-Let's use the most emotion used in inaugural speech to end our study, trust people, people trust you.
+Let's use the most used expression in inaugural speech to end our study, Thank you!
